@@ -12,11 +12,11 @@ with open(os.path.join(this_dir, "VERSION"), "r") as version_file:
     version = version_file.read().strip()
 
 setuptools.setup(
-    name="rhasspy-asr-pocketsphinx-hermes",
+    name="rhasspy-wake-porcupine-hermes",
     version=version,
     author="Michael Hansen",
     author_email="hansen.mike@gmail.com",
-    url="https://github.com/synesthesiam/rhasspy-asr-pocketsphinx-hermes",
+    url="https://github.com/synesthesiam/rhasspy-wake-porcupine-hermes",
     packages=setuptools.find_packages(),
     install_requires=requirements,
     classifiers=[
@@ -26,9 +26,4 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     python_requires=">=3.6",
-    entry_points={
-        "console_scripts": [
-            "rhasspyasr_pocketsphinx_hermes = rhasspyasr_pocketsphinx_hermes.__main__:main"
-        ]
-    },
 )

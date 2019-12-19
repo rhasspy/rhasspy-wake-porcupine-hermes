@@ -1,3 +1,3 @@
-# Rhasspy NLU Hermes
+# Rhasspy Wake Porcupine Hermes
 
-Command-line interface to Rhasspy NLU MQTT service using Hermes protocol.
+Implements `hermes/hotword` functionality from [Hermes protocol](https://docs.snips.ai/reference/hermes) using [Porcupine](https://github.com/Picovoice/Porcupine).
