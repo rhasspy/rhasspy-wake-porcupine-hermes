@@ -1,0 +1,6 @@
+__pycache__/
+.venv/
+debian/rhasspy-wake-porcupine-hermes*
+dist/
+*.egg-info/
+pyinstaller/
