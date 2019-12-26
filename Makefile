@@ -9,8 +9,8 @@ debian_package := rhasspy-wake-porcupine-hermes_$(version)_$(architecture)
 debian_dir := debian/$(debian_package)
 
 check:
-	flake8 --exclude=porcupine.py rhasspywake_porcupine_hermes/*.py rhasspywake_porcupine_hermes/test/*.py
-	pylint --ignore=porcupine.py rhasspywake_porcupine_hermes/*.py rhasspywake_porcupine_hermes/test/*.py
+	flake8 --exclude=porcupine.py rhasspywake_porcupine_hermes/*.py
+	pylint --ignore=porcupine.py rhasspywake_porcupine_hermes/*.py
 
 venv:
 	rm -rf .venv/
@@ -22,6 +22,9 @@ dist: sdist debian
 
 sdist:
 	python3 setup.py sdist
+
+test:
+	bash etc/test/test_wavs.sh
 
 pyinstaller:
 	mkdir -p dist

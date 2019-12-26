@@ -1,6 +1,8 @@
 attrs==19.3.0
 paho-mqtt==1.5.0
-rhasspy-hermes==0.1.1
+rhasspy-hermes==0.1.4
+
+coverage==5.0
 flake8==3.7.9
 pylint==2.4.4
 pyinstaller==3.5

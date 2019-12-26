@@ -2,7 +2,11 @@
 import argparse
 import logging
 import itertools
+import json
+import os
+import sys
 
+import attr
 import paho.mqtt.client as mqtt
 
 from . import WakeHermesMqtt
@@ -35,13 +39,18 @@ def main():
         help="Sensitivities of keywords (default: 0.5)",
     )
     parser.add_argument(
+        "--stdin-audio", action="store_true", help="Read WAV audio from stdin"
+    )
+    parser.add_argument(
         "--host", default="localhost", help="MQTT host (default: localhost)"
     )
     parser.add_argument(
         "--port", type=int, default=1883, help="MQTT port (default: 1883)"
     )
     parser.add_argument(
-        "--siteId", default="default", help="Hermes siteId of this server"
+        "--siteId",
+        action="append",
+        help="Hermes siteId(s) to listen for (default: all)",
     )
     parser.add_argument(
         "--debug", action="store_true", help="Print DEBUG messages to the console"
@@ -86,6 +95,25 @@ def main():
             )
         ]
 
+        if args.stdin_audio:
+            # Read WAV from stdin, detect, and exit
+            client = None
+            hermes = WakeHermesMqtt(
+                client, porcupine_handle, args.keyword, keyword_names, sensitivities
+            )
+
+            if os.isatty(sys.stdin.fileno()):
+                print("Reading WAV data from stdin...", file=sys.stderr)
+
+            wav_bytes = sys.stdin.buffer.read()
+
+            # Print results as JSON
+            for result in hermes.handle_audio_frame(wav_bytes):
+                result_dict = attr.asdict(result)
+                json.dump(result_dict, sys.stdout)
+
+            return
+
         # Listen for messages
         client = mqtt.Client()
         hermes = WakeHermesMqtt(
@@ -94,7 +122,7 @@ def main():
             args.keyword,
             keyword_names,
             sensitivities,
-            siteId=args.siteId,
+            siteIds=args.siteId,
         )
 
         def on_disconnect(client, userdata, flags, rc):
