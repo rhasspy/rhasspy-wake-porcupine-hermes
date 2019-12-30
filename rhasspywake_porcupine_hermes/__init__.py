@@ -62,7 +62,9 @@ class WakeHermesMqtt:
 
     def handle_audio_frame(
         self, wav_bytes: bytes, siteId: str = "default"
-    ) -> typing.Iterable[typing.Union[HotwordDetected, HotwordError]]:
+    ) -> typing.Iterable[
+        typing.Tuple[str, typing.Union[HotwordDetected, HotwordError]]
+    ]:
         """Process a single audio frame"""
         # Extract/convert audio data
         audio_data = self.maybe_convert_wav(wav_bytes)
@@ -84,7 +86,12 @@ class WakeHermesMqtt:
                 if len(self.model_ids) == 1:
                     keyword_index = 0
 
-                yield self.handle_detection(keyword_index, siteId=siteId)
+                if keyword_index < len(self.wakeword_ids):
+                    wakewordId = self.wakeword_ids[keyword_index]
+                else:
+                    wakewordId = "default"
+
+                yield (wakewordId, self.handle_detection(keyword_index, siteId=siteId))
 
     def handle_detection(
         self, keyword_index, siteId="default"
@@ -159,10 +166,12 @@ class WakeHermesMqtt:
                         self.first_audio = False
 
                     siteId = AudioFrame.get_siteId(msg.topic)
-                    for result in self.handle_audio_frame(msg.payload, siteId=siteId):
+                    for wakewordId, result in self.handle_audio_frame(
+                        msg.payload, siteId=siteId
+                    ):
                         if isinstance(result, HotwordDetected):
                             # Topic contains wake word id
-                            self.publish(result, wakewordId=result.wakewordId)
+                            self.publish(result, wakewordId=wakewordId)
                         else:
                             self.publish(result)
         except Exception:
