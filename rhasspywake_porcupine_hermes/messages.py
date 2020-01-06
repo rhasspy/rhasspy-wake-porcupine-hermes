@@ -1,6 +1,5 @@
 """Provisional messages for hermes/hotword"""
 import attr
-
 from rhasspyhermes.base import Message
 
 

@@ -1,8 +1,8 @@
 """Hermes MQTT service for Rhasspy wakeword with Porcupine"""
 import argparse
-import logging
 import itertools
 import json
+import logging
 import os
 import sys
 

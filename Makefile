@@ -1,4 +1,5 @@
 SHELL := bash
+PYTHON_FILES = rhasspywake_porcupine_hermes/*.py setup.py
 
 .PHONY: check dist venv test pyinstaller debian
 
@@ -9,8 +10,12 @@ debian_package := rhasspy-wake-porcupine-hermes_$(version)_$(architecture)
 debian_dir := debian/$(debian_package)
 
 check:
-	flake8 --exclude=porcupine.py rhasspywake_porcupine_hermes/*.py
-	pylint --ignore=porcupine.py rhasspywake_porcupine_hermes/*.py
+	flake8 --exclude=porcupine.py $(PYTHON_FILES)
+	pylint --ignore=porcupine.py $(PYTHON_FILES)
+	mypy $(PYTHON_FILES)
+	isort $(PYTHON_FILES)
+	black .
+	pip list --outdated
 
 venv:
 	rm -rf .venv/

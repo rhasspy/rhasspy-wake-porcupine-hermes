@@ -2,15 +2,15 @@
 import io
 import json
 import logging
-import typing
 import struct
 import subprocess
+import typing
 import wave
 
 import attr
 from rhasspyhermes.audioserver import AudioFrame
 from rhasspyhermes.base import Message
-from rhasspyhermes.wake import HotwordToggleOn, HotwordToggleOff, HotwordDetected
+from rhasspyhermes.wake import HotwordDetected, HotwordToggleOff, HotwordToggleOn
 
 from .messages import HotwordError
 
@@ -125,7 +125,7 @@ class WakeHermesMqtt:
                 topics.extend(self.audioframe_topics)
             else:
                 # All siteIds
-                topics.append(AudioFrame.topic(siteId="#"))
+                topics.append(AudioFrame.topic(siteId="+"))
 
             for topic in topics:
                 self.client.subscribe(topic)
