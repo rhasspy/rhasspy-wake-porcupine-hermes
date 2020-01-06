@@ -16,7 +16,7 @@ setuptools.setup(
     version=version,
     author="Michael Hansen",
     author_email="hansen.mike@gmail.com",
-    url="https://github.com/synesthesiam/rhasspy-wake-porcupine-hermes",
+    url="https://github.com/rhasspy/rhasspy-wake-porcupine-hermes",
     packages=setuptools.find_packages(),
     install_requires=requirements,
     classifiers=[
