@@ -1,13 +1,20 @@
 SHELL := bash
-PYTHON_FILES = rhasspywake_porcupine_hermes/*.py setup.py
+PYTHON_NAME = rhasspywake_porcupine_hermes
+PACKAGE_NAME = rhasspy-wake-porcupine-hermes
+SOURCE = $(PYTHON_NAME)
+PYTHON_FILES = $(SOURCE)/*.py setup.py
 
-.PHONY: check dist venv test pyinstaller debian
+.PHONY: check dist venv test pyinstaller debian docker deploy
 
 version := $(shell cat VERSION)
-architecture := $(shell dpkg-architecture | grep DEB_BUILD_ARCH= | sed 's/[^=]\+=//')
+architecture := $(shell bash architecture.sh)
 
-debian_package := rhasspy-wake-porcupine-hermes_$(version)_$(architecture)
+debian_package := $(PACKAGE_NAME)_$(version)_$(architecture)
 debian_dir := debian/$(debian_package)
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
 
 check:
 	flake8 --exclude=porcupine.py $(PYTHON_FILES)
@@ -20,6 +27,7 @@ check:
 venv:
 	rm -rf .venv/
 	python3 -m venv .venv
+	.venv/bin/pip3 install --upgrade pip
 	.venv/bin/pip3 install wheel setuptools
 	.venv/bin/pip3 install -r requirements.txt
 	.venv/bin/pip3 install -r requirements_dev.txt
@@ -32,10 +40,25 @@ sdist:
 test:
 	bash etc/test/test_wavs.sh
 
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+
+docker: pyinstaller
+	docker build . -t "rhasspy/$(PACKAGE_NAME):$(version)"
+
+deploy:
+	echo "$$DOCKER_PASSWORD" | docker login -u "$$DOCKER_USERNAME" --password-stdin
+	docker push rhasspy/$(PACKAGE_NAME):$(version)
+
+# -----------------------------------------------------------------------------
+# Debian
+# -----------------------------------------------------------------------------
+
 pyinstaller:
 	mkdir -p dist
-	pyinstaller -y --workpath pyinstaller/build --distpath pyinstaller/dist rhasspywake_porcupine_hermes.spec
-	tar -C pyinstaller/dist -czf dist/rhasspy-wake-porcupine-hermes_$(version)_$(architecture).tar.gz rhasspywake_porcupine_hermes/
+	pyinstaller -y --workpath pyinstaller/build --distpath pyinstaller/dist $(PYTHON_NAME).spec
+	tar -C pyinstaller/dist -czf dist/$(PACKAGE_NAME)_$(version)_$(architecture).tar.gz $(SOURCE)/
 
 debian: pyinstaller
 	mkdir -p dist
@@ -43,9 +66,6 @@ debian: pyinstaller
 	mkdir -p "$(debian_dir)/DEBIAN" "$(debian_dir)/usr/bin" "$(debian_dir)/usr/lib"
 	cat debian/DEBIAN/control | version=$(version) architecture=$(architecture) envsubst > "$(debian_dir)/DEBIAN/control"
 	cp debian/bin/* "$(debian_dir)/usr/bin/"
-	cp -R pyinstaller/dist/rhasspywake_porcupine_hermes "$(debian_dir)/usr/lib/"
+	cp -R pyinstaller/dist/$(PYTHON_NAME) "$(debian_dir)/usr/lib/"
 	cd debian/ && fakeroot dpkg --build "$(debian_package)"
 	mv "debian/$(debian_package).deb" dist/
-
-docker: pyinstaller
-	docker build . -t "rhasspy/rhasspy-wake-porcupine-hermes:$(version)"
