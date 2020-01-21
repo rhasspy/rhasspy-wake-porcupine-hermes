@@ -3,13 +3,13 @@ import attr
 from rhasspyhermes.base import Message
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class HotwordError(Message):
     """Error from Hotword component."""
 
-    error: str = attr.ib()
-    context: str = attr.ib(default="")
-    siteId: str = attr.ib(default="default")
+    error: str
+    context: str = ""
+    siteId: str = "default"
 
     @classmethod
     def topic(cls, **kwargs) -> str:
