@@ -4,4 +4,5 @@ __pycache__/
 debian/rhasspy-wake-porcupine-hermes*
 dist/
 *.egg-info/
+.vscode/
 pyinstaller/

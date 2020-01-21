@@ -1,5 +1,8 @@
 # Rhasspy Wake Porcupine Hermes
 
+[![Continous Integration](https://github.com/rhasspy/rhasspy-wake-porcupine-hermes/workflows/Tests/badge.svg)](https://github.com/rhasspy/rhasspy-wake-porcupine-hermes/actions)
+[![GitHub license](https://img.shields.io/github/license/rhasspy/rhasspy-wake-porcupine-hermes.svg)](https://github.com/rhasspy/rhasspy-wake-porcupine-hermes/blob/master/LICENSE)
+
 Implements `hermes/hotword` functionality from [Hermes protocol](https://docs.snips.ai/reference/hermes) using [Porcupine](https://github.com/Picovoice/Porcupine).
 
 ## Running With Docker
