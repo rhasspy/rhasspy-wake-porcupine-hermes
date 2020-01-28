@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Publish WAV using Hermes protocol"""
 import argparse
 import io
 import json
@@ -19,6 +20,7 @@ TOPIC_DETECTED = "hermes/hotword/{wakewordId}/detected"
 
 
 def main():
+    """Main method"""
     parser = argparse.ArgumentParser(prog="publish_wav")
     parser.add_argument(
         "--siteId", default="default", help="Site ID to publish audio to"
@@ -99,7 +101,8 @@ def main():
 
                         # Wrap chunk in WAV
                         with io.BytesIO() as out_io:
-                            with wave.open(out_io, "wb") as out_wav:
+                            out_wav: wave.Wave_write = wave.open(out_io, "wb")
+                            with out_wav:
                                 out_wav.setframerate(in_wav.getframerate())
                                 out_wav.setsampwidth(in_wav.getsampwidth())
                                 out_wav.setnchannels(in_wav.getnchannels())
@@ -110,7 +113,7 @@ def main():
                                 f"hermes/audioServer/{args.siteId}/audioFrame",
                                 out_io.getvalue(),
                             )
-                except:
+                except Exception:
                     _LOGGER.exception("send_wav")
 
                 _LOGGER.debug("Sent %s byte(s) of audio data", num_audio_bytes)

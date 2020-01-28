@@ -4,6 +4,7 @@ PACKAGE_NAME = rhasspy-wake-porcupine-hermes
 SOURCE = $(PYTHON_NAME)
 PYTHON_FILES = $(SOURCE)/*.py bin/publish_wav.py *.py
 SHELL_FILES = bin/$(PACKAGE_NAME) debian/bin/* *.sh
+PIP_INSTALL ?= install
 
 .PHONY: reformat check dist venv test pyinstaller debian docker deploy
 
@@ -22,7 +23,7 @@ reformat:
 	isort $(PYTHON_FILES)
 
 check:
-	flake8 $(PYTHON_FILES)
+	flake8 --exclude=porcupine.py $(PYTHON_FILES)
 	pylint $(PYTHON_FILES)
 	mypy $(PYTHON_FILES)
 	black --check .
@@ -34,10 +35,10 @@ check:
 venv:
 	rm -rf .venv/
 	python3 -m venv .venv
-	.venv/bin/pip3 install --upgrade pip
-	.venv/bin/pip3 install wheel setuptools
-	.venv/bin/pip3 install -r requirements.txt
-	.venv/bin/pip3 install -r requirements_dev.txt
+	.venv/bin/pip3 $(PIP_INSTALL) --upgrade pip
+	.venv/bin/pip3 $(PIP_INSTALL) wheel setuptools
+	.venv/bin/pip3 $(PIP_INSTALL) -r requirements.txt
+	.venv/bin/pip3 $(PIP_INSTALL) -r requirements_dev.txt
 
 dist: sdist debian
 
