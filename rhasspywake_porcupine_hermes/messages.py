@@ -3,7 +3,7 @@ import attr
 from rhasspyhermes.base import Message
 
 
-@attr.s(auto_attribs=True)
+@attr.s(auto_attribs=True, slots=True)
 class HotwordError(Message):
     """Error from Hotword component."""
 
