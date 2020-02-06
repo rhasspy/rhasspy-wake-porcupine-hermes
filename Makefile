@@ -19,18 +19,10 @@ debian_dir := debian/$(debian_package)
 # -----------------------------------------------------------------------------
 
 reformat:
-	black .
-	isort $(PYTHON_FILES)
+	scripts/format-code.sh $(PYTHON_FILES)
 
 check:
-	flake8 --exclude=porcupine.py $(PYTHON_FILES)
-	pylint $(PYTHON_FILES)
-	mypy $(PYTHON_FILES)
-	black --check .
-	isort --check-only $(PYTHON_FILES)
-	bashate $(SHELL_FILES)
-	yamllint .
-	pip list --outdated
+	scripts/check-code.sh $(PYTHON_FILES)
 
 venv:
 	scripts/create-venv.sh
@@ -41,6 +33,9 @@ sdist:
 	python3 setup.py sdist
 
 test:
+	echo "Skipping tests for now"
+
+test-wavs:
 	bash etc/test/test_wavs.sh
 
 # -----------------------------------------------------------------------------
@@ -59,16 +54,7 @@ deploy:
 # -----------------------------------------------------------------------------
 
 pyinstaller:
-	mkdir -p dist
-	pyinstaller -y --workpath pyinstaller/build --distpath pyinstaller/dist $(PYTHON_NAME).spec
-	tar -C pyinstaller/dist -czf dist/$(PACKAGE_NAME)_$(version)_$(architecture).tar.gz $(SOURCE)/
+	scripts/build-pyinstaller.sh "${architecture}" "${version}"
 
-debian: pyinstaller
-	mkdir -p dist
-	rm -rf "$(debian_dir)"
-	mkdir -p "$(debian_dir)/DEBIAN" "$(debian_dir)/usr/bin" "$(debian_dir)/usr/lib"
-	cat debian/DEBIAN/control | version=$(version) architecture=$(architecture) envsubst > "$(debian_dir)/DEBIAN/control"
-	cp debian/bin/* "$(debian_dir)/usr/bin/"
-	cp -R pyinstaller/dist/$(PYTHON_NAME) "$(debian_dir)/usr/lib/"
-	cd debian/ && fakeroot dpkg --build "$(debian_package)"
-	mv "debian/$(debian_package).deb" dist/
+debian:
+	scripts/build-debian.sh "${architecture}" "${version}"
