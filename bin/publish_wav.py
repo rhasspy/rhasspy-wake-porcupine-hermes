@@ -106,7 +106,7 @@ def main():
                                 out_wav.setframerate(in_wav.getframerate())
                                 out_wav.setsampwidth(in_wav.getsampwidth())
                                 out_wav.setnchannels(in_wav.getnchannels())
-                                out_wav.writeframesraw(chunk)
+                                out_wav.writeframes(chunk)
 
                             # Publish audio frame
                             client.publish(

@@ -202,7 +202,7 @@ class WakeHermesMqtt:
 
     # -------------------------------------------------------------------------
 
-    def _convert_wav(self, wav_data: bytes) -> bytes:
+    def _convert_wav(self, wav_bytes: bytes) -> bytes:
         """Converts WAV data to required format with sox. Return raw audio."""
         return subprocess.run(
             [
@@ -224,7 +224,7 @@ class WakeHermesMqtt:
             ],
             check=True,
             stdout=subprocess.PIPE,
-            input=wav_data,
+            input=wav_bytes,
         ).stdout
 
     def maybe_convert_wav(self, wav_bytes: bytes) -> bytes:
