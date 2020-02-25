@@ -26,6 +26,8 @@ for qemu_file in qemu-arm-static qemu-aarch64-static; do
     fi
 done
 
+architecture="$(bash "${src_dir}/architecture.sh")"
+
 # Do Docker builds
 service_name="$(basename "${src_dir}")"
 docker_archs=('amd64' 'arm32v7' 'arm64v8' 'arm32v6')
@@ -43,10 +45,35 @@ for docker_arch in "${docker_archs[@]}"; do
        exit 1
     fi
 
+    # Determine mapped directories based on architecture
+    case "${architecture}" in
+        armhf)
+            lib_arch_dir="raspberry-pi/cortex-a53"
+            keyword_arch_dir="raspberrypi"
+        ;;
+
+        aarch64)
+            lib_arch_dir="raspberry-pi/cortex-a53"
+            keyword_arch_dir="raspberrypi"
+        ;;
+
+        armv6l)
+            lib_arch_dir="raspberry-pi/cortex-a7"
+            keyword_arch_dir="raspberrypi"
+        ;;
+
+        *)
+            lib_arch_dir="linux/x86_64"
+            keyword_arch_dir="linux"
+        ;;
+    esac
+
     docker_tag="rhasspy/${service_name}:${version}-${friendly_arch}"
 
     docker build "${src_dir}" \
         --build-arg "BUILD_ARCH=${docker_arch}" \
         --build-arg "FRIENDLY_ARCH=${friendly_arch}" \
+        --build-arg "PORCUPINE_LIB=${lib_arch_dir}" \
+        --build-arg "PORCUPINE_KW=${keyword_arch_dir}" \
         -t "${docker_tag}"
 done

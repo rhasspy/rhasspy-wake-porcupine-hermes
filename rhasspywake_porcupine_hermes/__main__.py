@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 
 import attr
 import paho.mqtt.client as mqtt
@@ -24,6 +25,7 @@ def main():
         action="append",
         help="Path(s) to one or more Porcupine keyword file(s) (.ppn)",
     )
+    parser.add_argument("--keyword-dir", help="Path to directory with keyword files")
     parser.add_argument(
         "--library", required=True, help="Path to Porcupine shared library (.so)"
     )
@@ -73,6 +75,17 @@ def main():
             )
         ]
 
+        if args.keyword_dir:
+            args.keyword_dir = Path(args.keyword_dir)
+
+            # Resolve all keyword files against keyword dir
+            args.keyword = [
+                str((args.keyword_dir / Path(kw).name))
+                if not os.path.exists(kw)
+                else kw
+                for kw in args.keyword
+            ]
+
         _LOGGER.debug(
             "Loading porcupine (kw=%s, sensitivity=%s, library=%s, model=%s)",
             args.keyword,
@@ -84,7 +97,7 @@ def main():
         porcupine_handle = Porcupine(
             args.library,
             args.model,
-            keyword_file_paths=args.keyword,
+            keyword_file_paths=[str(kw) for kw in args.keyword],
             sensitivities=sensitivities,
         )
 
@@ -122,6 +135,7 @@ def main():
             args.keyword,
             keyword_names,
             sensitivities,
+            keyword_dir=args.keyword_dir,
             siteIds=args.siteId,
         )
 
