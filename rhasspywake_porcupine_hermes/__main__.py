@@ -108,7 +108,7 @@ def main():
                 # Assume x86_64
                 lib_dir = os.path.join(lib_dir, "linux", "x86_64")
 
-                args.library = os.path.join(lib_dir, "libpv_porcupine.so")
+            args.library = os.path.join(lib_dir, "libpv_porcupine.so")
 
         if not args.model:
             # Use embedded model
