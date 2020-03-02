@@ -4,6 +4,7 @@ import itertools
 import json
 import logging
 import os
+import platform
 import sys
 from pathlib import Path
 
@@ -13,6 +14,7 @@ import paho.mqtt.client as mqtt
 from . import WakeHermesMqtt
 from .porcupine import Porcupine
 
+_DIR = Path(__file__).parent
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -26,10 +28,8 @@ def main():
         help="Path(s) to one or more Porcupine keyword file(s) (.ppn)",
     )
     parser.add_argument("--keyword-dir", help="Path to directory with keyword files")
-    parser.add_argument(
-        "--library", required=True, help="Path to Porcupine shared library (.so)"
-    )
-    parser.add_argument("--model", required=True, help="Path to Porcupine model (.pv)")
+    parser.add_argument("--library", help="Path to Porcupine shared library (.so)")
+    parser.add_argument("--model", help="Path to Porcupine model (.pv)")
     parser.add_argument(
         "--wakewordId",
         action="append",
@@ -75,20 +75,51 @@ def main():
             )
         ]
 
+        machine = platform.machine()
+
         if args.keyword_dir:
             args.keyword_dir = Path(args.keyword_dir)
+        else:
+            keyword_dir = _DIR / "porcupine" / "resources" / "keyword_files"
 
-            # Resolve all keyword files against keyword dir
-            args.keyword = [
-                str((args.keyword_dir / Path(kw).name))
-                if not os.path.exists(kw)
-                else kw
-                for kw in args.keyword
-            ]
+            if machine in ["armv6l", "armv6l", "aarch64"]:
+                args.keyword_dir = keyword_dir / "raspberrypi"
+            else:
+                args.keyword_dir = keyword_dir / "linux"
+
+        # Resolve all keyword files against keyword dir
+        args.keyword = [
+            str((args.keyword_dir / Path(kw).name))
+            if not os.path.exists(kw)
+            else kw
+            for kw in args.keyword
+        ]
+
+        if not args.library:
+            # Use embedded library
+            lib_dir = os.path.join(_DIR, "porcupine", "lib")
+            if machine == "armv6l":
+                # Pi 0/1
+                lib_dir = os.path.join(lib_dir, "raspberry-pi", "cortex-a7")
+            elif machine in ["armv7l", "aarch64"]:
+                # Pi 2/3/4
+                lib_dir = os.path.join(lib_dir, "raspberry-pi", "cortex-a53")
+            else:
+                # Assume x86_64
+                lib_dir = os.path.join(lib_dir, "linux", "x86_64")
+
+                args.library = os.path.join(lib_dir, "libpv_porcupine.so")
+
+        if not args.model:
+            # Use embedded model
+            args.model = os.path.join(
+                _DIR, "porcupine", "lib", "common", "porcupine_params.pv"
+            )
 
         _LOGGER.debug(
-            "Loading porcupine (kw=%s, sensitivity=%s, library=%s, model=%s)",
+            "Loading porcupine (kw=%s, kwdir=%s, sensitivity=%s, library=%s, model=%s)",
             args.keyword,
+            str(args.keyword_dir),
             sensitivities,
             args.library,
             args.model,
