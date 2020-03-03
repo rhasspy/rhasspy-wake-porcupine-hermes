@@ -89,9 +89,7 @@ def main():
 
         # Resolve all keyword files against keyword dir
         args.keyword = [
-            str((args.keyword_dir / Path(kw).name))
-            if not os.path.exists(kw)
-            else kw
+            str((args.keyword_dir / Path(kw).name)) if not os.path.exists(kw) else kw
             for kw in args.keyword
         ]
 
