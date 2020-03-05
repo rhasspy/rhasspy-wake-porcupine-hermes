@@ -27,7 +27,12 @@ def main():
         action="append",
         help="Path(s) to one or more Porcupine keyword file(s) (.ppn)",
     )
-    parser.add_argument("--keyword-dir", help="Path to directory with keyword files")
+    parser.add_argument(
+        "--keyword-dir",
+        action="append",
+        default=[],
+        help="Path to directory with keyword files",
+    )
     parser.add_argument("--library", help="Path to Porcupine shared library (.so)")
     parser.add_argument("--model", help="Path to Porcupine model (.pv)")
     parser.add_argument(
@@ -78,20 +83,26 @@ def main():
         machine = platform.machine()
 
         if args.keyword_dir:
-            args.keyword_dir = Path(args.keyword_dir)
+            args.keyword_dir = [Path(d) for d in args.keyword_dir]
+
+        # Add embedded keywords too
+        keyword_base = _DIR / "porcupine" / "resources" / "keyword_files"
+
+        if machine in ["armv6l", "armv6l", "aarch64"]:
+            args.keyword_dir.append(keyword_base / "raspberrypi")
         else:
-            keyword_dir = _DIR / "porcupine" / "resources" / "keyword_files"
+            args.keyword_dir.append(keyword_base / "linux")
 
-            if machine in ["armv6l", "armv6l", "aarch64"]:
-                args.keyword_dir = keyword_dir / "raspberrypi"
-            else:
-                args.keyword_dir = keyword_dir / "linux"
-
-        # Resolve all keyword files against keyword dir
-        args.keyword = [
-            str((args.keyword_dir / Path(kw).name)) if not os.path.exists(kw) else kw
-            for kw in args.keyword
-        ]
+        # Resolve all keyword files against keyword dirs
+        for i, keyword in enumerate(args.keyword):
+            maybe_keyword = Path(keyword)
+            if not maybe_keyword.is_file():
+                # Try to resolve agains keyword dirs
+                for keyword_dir in args.keyword_dir:
+                    maybe_keyword = keyword_dir / keyword
+                    if maybe_keyword.is_file():
+                        # Overwrite with resolved path
+                        args.keyword[i] = str(maybe_keyword)
 
         if not args.library:
             # Use embedded library
@@ -115,9 +126,9 @@ def main():
             )
 
         _LOGGER.debug(
-            "Loading porcupine (kw=%s, kwdir=%s, sensitivity=%s, library=%s, model=%s)",
+            "Loading porcupine (kw=%s, kwdirs=%s, sensitivity=%s, library=%s, model=%s)",
             args.keyword,
-            str(args.keyword_dir),
+            [str(d) for d in args.keyword_dir],
             sensitivities,
             args.library,
             args.model,
@@ -164,7 +175,7 @@ def main():
             args.keyword,
             keyword_names,
             sensitivities,
-            keyword_dir=args.keyword_dir,
+            keyword_dirs=args.keyword_dir,
             siteIds=args.siteId,
         )
 

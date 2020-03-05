@@ -34,7 +34,7 @@ class WakeHermesMqtt:
         model_ids: typing.List[str],
         wakeword_ids: typing.List[str],
         sensitivities: typing.List[float],
-        keyword_dir: typing.Optional[Path] = None,
+        keyword_dirs: typing.Optional[typing.List[Path]] = None,
         siteIds: typing.Optional[typing.List[str]] = None,
         enabled: bool = True,
         sample_rate: int = 16000,
@@ -47,7 +47,7 @@ class WakeHermesMqtt:
         self.model_ids = model_ids
         self.sensitivities = sensitivities
 
-        self.keyword_dir = keyword_dir
+        self.keyword_dirs = keyword_dirs or []
         self.siteIds = siteIds or []
         self.enabled = enabled
 
@@ -128,9 +128,16 @@ class WakeHermesMqtt:
     ) -> typing.Union[Hotwords, HotwordError]:
         """Report available hotwords"""
         try:
-            if self.keyword_dir:
+            if self.keyword_dirs:
                 # Add all models from keyword dir
-                model_paths = list(self.keyword_dir.glob("*.ppn"))
+                model_paths = []
+                for keyword_dir in self.keyword_dirs:
+                    if not keyword_dir.is_dir():
+                        _LOGGER.warning("Missing keyword dir: %s", str(keyword_dir))
+                        continue
+
+                    for keyword_file in keyword_dir.glob("*.ppn"):
+                        model_paths.append(keyword_file)
             else:
                 # Add current model(s) only
                 model_paths = [Path(model_id) for model_id in self.model_ids]
