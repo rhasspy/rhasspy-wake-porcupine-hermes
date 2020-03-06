@@ -2,8 +2,11 @@
 import io
 import json
 import logging
+import queue
+import socket
 import struct
 import subprocess
+import threading
 import typing
 import wave
 from pathlib import Path
@@ -21,7 +24,10 @@ from rhasspyhermes.wake import (
     HotwordToggleOn,
 )
 
+WAV_HEADER_BYTES = 44
 _LOGGER = logging.getLogger(__name__)
+
+# -----------------------------------------------------------------------------
 
 
 class WakeHermesMqtt:
@@ -40,6 +46,8 @@ class WakeHermesMqtt:
         sample_rate: int = 16000,
         sample_width: int = 2,
         channels: int = 1,
+        udp_audio_port: typing.Optional[int] = None,
+        udp_chunk_size: int = 2048,
     ):
         self.client = client
         self.porcupine = porcupine
@@ -56,6 +64,16 @@ class WakeHermesMqtt:
         self.sample_width = sample_width
         self.channels = channels
 
+        # Queue of WAV audio chunks to process (plus siteId)
+        self.wav_queue: queue.Queue = queue.Queue()
+
+        # Listen for raw audio on UDP too
+        self.udp_audio_port = udp_audio_port
+        self.udp_chunk_size = udp_chunk_size
+
+        # siteId used for detections from UDP
+        self.udp_siteId = "default" if not self.siteIds else self.siteIds[0]
+
         self.chunk_size = self.porcupine.frame_length * 2
         self.chunk_format = "h" * self.porcupine.frame_length
 
@@ -70,38 +88,9 @@ class WakeHermesMqtt:
 
     # -------------------------------------------------------------------------
 
-    def handle_audio_frame(
-        self, wav_bytes: bytes, siteId: str = "default"
-    ) -> typing.Iterable[
-        typing.Tuple[str, typing.Union[HotwordDetected, HotwordError]]
-    ]:
+    def handle_audio_frame(self, wav_bytes: bytes, siteId: str = "default"):
         """Process a single audio frame"""
-        # Extract/convert audio data
-        audio_data = self.maybe_convert_wav(wav_bytes)
-
-        # Add to persistent buffer
-        self.audio_buffer += audio_data
-
-        # Process in chunks.
-        # Any remaining audio data will be kept in buffer.
-        while len(self.audio_buffer) >= self.chunk_size:
-            chunk = self.audio_buffer[: self.chunk_size]
-            self.audio_buffer = self.audio_buffer[self.chunk_size :]
-
-            unpacked_chunk = struct.unpack_from(self.chunk_format, chunk)
-            keyword_index = self.porcupine.process(unpacked_chunk)
-
-            if keyword_index:
-                # Detection
-                if len(self.model_ids) == 1:
-                    keyword_index = 0
-
-                if keyword_index < len(self.wakeword_ids):
-                    wakewordId = self.wakeword_ids[keyword_index]
-                else:
-                    wakewordId = "default"
-
-                yield (wakewordId, self.handle_detection(keyword_index, siteId=siteId))
+        self.wav_queue.put((wav_bytes, siteId))
 
     def handle_detection(
         self, keyword_index, siteId="default"
@@ -166,11 +155,72 @@ class WakeHermesMqtt:
                 error=str(e), context=str(get_hotwords), siteId=get_hotwords.siteId
             )
 
+    def detection_thread_proc(self):
+        """Handle WAV audio chunks."""
+        try:
+            while True:
+                wav_bytes, siteId = self.wav_queue.get()
+                if self.first_audio:
+                    _LOGGER.debug("Receiving audio")
+                    self.first_audio = False
+
+                # Add to persistent buffer
+                audio_data = self.maybe_convert_wav(wav_bytes)
+                self.audio_buffer += audio_data
+
+                # Process in chunks.
+                # Any remaining audio data will be kept in buffer.
+                while len(self.audio_buffer) >= self.chunk_size:
+                    chunk = self.audio_buffer[: self.chunk_size]
+                    self.audio_buffer = self.audio_buffer[self.chunk_size :]
+
+                    unpacked_chunk = struct.unpack_from(self.chunk_format, chunk)
+                    keyword_index = self.porcupine.process(unpacked_chunk)
+
+                    if keyword_index:
+                        # Detection
+                        if len(self.model_ids) == 1:
+                            keyword_index = 0
+
+                        if keyword_index < len(self.wakeword_ids):
+                            wakewordId = self.wakeword_ids[keyword_index]
+                        else:
+                            wakewordId = "default"
+
+                        message = self.handle_detection(keyword_index, siteId=siteId)
+                        self.publish(message, wakewordId=wakewordId)
+
+        except Exception:
+            _LOGGER.exception("detection_thread_proc")
+
+    # -------------------------------------------------------------------------
+
+    def udp_thread_proc(self):
+        """Handle WAV chunks from UDP socket."""
+        try:
+            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            udp_socket.bind(("127.0.0.1", self.udp_audio_port))
+            _LOGGER.debug("Listening for audio on UDP port %s", self.udp_audio_port)
+
+            while True:
+                wav_bytes, _ = udp_socket.recvfrom(
+                    self.udp_chunk_size + WAV_HEADER_BYTES
+                )
+                self.wav_queue.put((wav_bytes, self.udp_siteId))
+        except Exception:
+            _LOGGER.exception("udp_thread_proc")
+
     # -------------------------------------------------------------------------
 
     def on_connect(self, client, userdata, flags, rc):
         """Connected to MQTT broker."""
         try:
+            # Start threads
+            threading.Thread(target=self.detection_thread_proc, daemon=True).start()
+
+            if self.udp_audio_port is not None:
+                threading.Thread(target=self.udp_thread_proc, daemon=True).start()
+
             topics = [
                 HotwordToggleOn.topic(),
                 HotwordToggleOff.topic(),
@@ -193,9 +243,6 @@ class WakeHermesMqtt:
     def on_message(self, client, userdata, msg):
         """Received message from MQTT broker."""
         try:
-            if not msg.topic.endswith("/audioFrame"):
-                _LOGGER.debug("Received %s byte(s) on %s", len(msg.payload), msg.topic)
-
             # Check enable/disable messages
             if msg.topic == HotwordToggleOn.topic():
                 json_payload = json.loads(msg.payload or "{}")
@@ -213,19 +260,8 @@ class WakeHermesMqtt:
                 if (not self.audioframe_topics) or (
                     msg.topic in self.audioframe_topics
                 ):
-                    if self.first_audio:
-                        _LOGGER.debug("Receiving audio")
-                        self.first_audio = False
-
                     siteId = AudioFrame.get_siteId(msg.topic)
-                    for wakewordId, result in self.handle_audio_frame(
-                        msg.payload, siteId=siteId
-                    ):
-                        if isinstance(result, HotwordDetected):
-                            # Topic contains wake word id
-                            self.publish(result, wakewordId=wakewordId)
-                        else:
-                            self.publish(result)
+                    self.handle_audio_frame(msg.payload, siteId=siteId)
             elif msg.topic == GetHotwords.topic():
                 json_payload = json.loads(msg.payload or "{}")
                 if self._check_siteId(json_payload):

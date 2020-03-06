@@ -49,6 +49,9 @@ def main():
         "--stdin-audio", action="store_true", help="Read WAV audio from stdin"
     )
     parser.add_argument(
+        "--udp-audio-port", type=int, help="Also listen for WAV audio on UDP"
+    )
+    parser.add_argument(
         "--host", default="localhost", help="MQTT host (default: localhost)"
     )
     parser.add_argument(
@@ -176,6 +179,7 @@ def main():
             keyword_names,
             sensitivities,
             keyword_dirs=args.keyword_dir,
+            udp_audio_port=args.udp_audio_port,
             siteIds=args.siteId,
         )
 
