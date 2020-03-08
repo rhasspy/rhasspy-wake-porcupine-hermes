@@ -91,7 +91,7 @@ def main():
         # Add embedded keywords too
         keyword_base = _DIR / "porcupine" / "resources" / "keyword_files"
 
-        if machine in ["armv6l", "armv6l", "aarch64"]:
+        if machine in ["armv6l", "armv7l", "aarch64"]:
             args.keyword_dir.append(keyword_base / "raspberrypi")
         else:
             args.keyword_dir.append(keyword_base / "linux")
