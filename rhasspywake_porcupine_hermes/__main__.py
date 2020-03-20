@@ -1,5 +1,6 @@
 """Hermes MQTT service for Rhasspy wakeword with Porcupine"""
 import argparse
+import asyncio
 import itertools
 import json
 import logging
@@ -15,7 +16,9 @@ from . import WakeHermesMqtt
 from .porcupine import Porcupine
 
 _DIR = Path(__file__).parent
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger("rhasspywake_porcupine_hermes")
+
+# -----------------------------------------------------------------------------
 
 
 def main():
@@ -175,6 +178,8 @@ def main():
 
             return
 
+        loop = asyncio.get_event_loop()
+
         # Listen for messages
         client = mqtt.Client()
         hermes = WakeHermesMqtt(
@@ -186,25 +191,15 @@ def main():
             keyword_dirs=args.keyword_dir,
             udp_audio_port=args.udp_audio_port,
             siteIds=args.siteId,
+            loop=loop,
         )
-
-        def on_disconnect(client, userdata, flags, rc):
-            try:
-                # Automatically reconnect
-                _LOGGER.info("Disconnected. Trying to reconnect...")
-                client.reconnect()
-            except Exception:
-                logging.exception("on_disconnect")
-
-        # Connect
-        client.on_connect = hermes.on_connect
-        client.on_disconnect = on_disconnect
-        client.on_message = hermes.on_message
 
         _LOGGER.debug("Connecting to %s:%s", args.host, args.port)
         client.connect(args.host, args.port)
+        client.loop_start()
 
-        client.loop_forever()
+        # Run event loop
+        hermes.loop.run_forever()
     except KeyboardInterrupt:
         pass
     finally:
