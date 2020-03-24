@@ -10,7 +10,7 @@ from pathlib import Path
 
 from rhasspyhermes.audioserver import AudioFrame
 from rhasspyhermes.base import Message
-from rhasspyhermes.client import HermesClient, TopicArgs
+from rhasspyhermes.client import GeneratorType, HermesClient, TopicArgs
 from rhasspyhermes.wake import (
     GetHotwords,
     Hotword,
@@ -239,7 +239,7 @@ class WakeHermesMqtt(HermesClient):
         siteId: typing.Optional[str] = None,
         sessionId: typing.Optional[str] = None,
         topic: typing.Optional[str] = None,
-    ):
+    ) -> GeneratorType:
         """Received message from MQTT broker."""
         # Check enable/disable messages
         if isinstance(message, HotwordToggleOn):
@@ -255,3 +255,6 @@ class WakeHermesMqtt(HermesClient):
                 await self.handle_audio_frame(message.wav_bytes, siteId=siteId)
         elif isinstance(message, GetHotwords):
             await self.publish_all(self.handle_get_hotwords(message))
+
+        # Mark as async generator
+        yield None
