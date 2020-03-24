@@ -254,7 +254,5 @@ class WakeHermesMqtt(HermesClient):
                 assert siteId, "Missing siteId"
                 await self.handle_audio_frame(message.wav_bytes, siteId=siteId)
         elif isinstance(message, GetHotwords):
-            await self.publish_all(self.handle_get_hotwords(message))
-
-        # Mark as async generator
-        yield None
+            async for hotword_result in self.handle_get_hotwords(message):
+                yield hotword_result
