@@ -201,7 +201,11 @@ class WakeHermesMqtt(HermesClient):
                         if keyword_index < len(self.wakeword_ids):
                             wakewordId = self.wakeword_ids[keyword_index]
                         else:
-                            wakewordId = "default"
+                            wakewordId = ""
+
+                        if not wakewordId:
+                            # Use file name
+                            wakewordId = Path(self.model_ids[keyword_index]).stem
 
                         asyncio.run_coroutine_threadsafe(
                             self.publish_all(

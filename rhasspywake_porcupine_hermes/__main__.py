@@ -42,7 +42,7 @@ def main():
     parser.add_argument(
         "--wakewordId",
         action="append",
-        help="Wakeword IDs of each keyword (default: default)",
+        help="Wakeword IDs of each keyword (default: use file name)",
     )
     parser.add_argument(
         "--sensitivity",
@@ -135,7 +135,7 @@ def main():
         keyword_names = [
             kn[1]
             for kn in itertools.zip_longest(
-                args.keyword, args.wakewordId or [], fillvalue="default"
+                args.keyword, args.wakewordId or [], fillvalue=""
             )
         ]
 
