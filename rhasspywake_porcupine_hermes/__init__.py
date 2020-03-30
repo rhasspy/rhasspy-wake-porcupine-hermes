@@ -45,7 +45,6 @@ class WakeHermesMqtt(HermesClient):
         channels: int = 1,
         udp_audio_port: typing.Optional[int] = None,
         udp_chunk_size: int = 2048,
-        loop=None,
     ):
         super().__init__(
             "rhasspywake_porcupine_hermes",
@@ -54,7 +53,6 @@ class WakeHermesMqtt(HermesClient):
             sample_width=sample_width,
             channels=channels,
             siteIds=siteIds,
-            loop=loop,
         )
 
         self.subscribe(AudioFrame, HotwordToggleOn, HotwordToggleOff, GetHotwords)
@@ -87,9 +85,6 @@ class WakeHermesMqtt(HermesClient):
 
         self.audio_buffer = bytes()
         self.first_audio = True
-
-        # Event loop
-        self.loop = loop or asyncio.get_event_loop()
 
         # Start threads
         threading.Thread(target=self.detection_thread_proc, daemon=True).start()
@@ -207,13 +202,13 @@ class WakeHermesMqtt(HermesClient):
                             # Use file name
                             wakewordId = Path(self.model_ids[keyword_index]).stem
 
-                        asyncio.run_coroutine_threadsafe(
+                        asyncio.ensure_future(
                             self.publish_all(
                                 self.handle_detection(
                                     keyword_index, wakewordId, siteId=siteId
                                 )
                             ),
-                            self.loop,
+                            loop=self.loop,
                         )
         except Exception:
             _LOGGER.exception("detection_thread_proc")
