@@ -203,13 +203,13 @@ class WakeHermesMqtt(HermesClient):
                             # Use file name
                             wakewordId = Path(self.model_ids[keyword_index]).stem
 
-                        asyncio.ensure_future(
+                        asyncio.run_coroutine_threadsafe(
                             self.publish_all(
                                 self.handle_detection(
                                     keyword_index, wakewordId, siteId=siteId
                                 )
                             ),
-                            loop=self.loop,
+                            self.loop,
                         )
         except Exception:
             _LOGGER.exception("detection_thread_proc")
