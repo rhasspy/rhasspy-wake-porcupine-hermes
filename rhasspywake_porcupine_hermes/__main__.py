@@ -99,7 +99,7 @@ def main():
         lib_dir = os.path.join(_DIR, "porcupine", "lib")
         if machine == "armv6l":
             # Pi 0/1
-            lib_dir = os.path.join(lib_dir, "raspberry-pi", "cortex-a7")
+            lib_dir = os.path.join(lib_dir, "raspberry-pi", "cortex-a72")
         elif machine in ["armv7l", "aarch64"]:
             # Pi 2/3/4
             lib_dir = os.path.join(lib_dir, "raspberry-pi", "cortex-a53")
