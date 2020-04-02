@@ -6,7 +6,9 @@ import json
 import logging
 import os
 import platform
+import subprocess
 import sys
+from enum import Enum
 from pathlib import Path
 
 import attr
@@ -78,9 +80,11 @@ def main():
     # Add embedded keywords too
     keyword_base = _DIR / "porcupine" / "resources" / "keyword_files"
 
-    if machine in ["armv6l", "armv7l", "aarch64"]:
+    if machine in ["armv6l", "armv7l", "armv8"]:
+        # Raspberry Pi
         args.keyword_dir.append(keyword_base / "raspberrypi")
     else:
+        # Desktop/server
         args.keyword_dir.append(keyword_base / "linux")
 
     # Resolve all keyword files against keyword dirs
@@ -99,10 +103,14 @@ def main():
         lib_dir = os.path.join(_DIR, "porcupine", "lib")
         if machine == "armv6l":
             # Pi 0/1
-            lib_dir = os.path.join(lib_dir, "raspberry-pi", "cortex-a72")
-        elif machine in ["armv7l", "aarch64"]:
-            # Pi 2/3/4
-            lib_dir = os.path.join(lib_dir, "raspberry-pi", "cortex-a53")
+            lib_dir = os.path.join(lib_dir, "raspberry-pi", "arm11")
+        elif machine in ["armv7l", "armv8"]:
+            # Pi 2 uses Cortex A7
+            # Pi 3 uses Cortex A53
+            # Pi 4 uses Cortex A72
+            cpu_model = guess_cpu_model()
+            _LOGGER.debug("Guessing you have an ARM %s", cpu_model)
+            lib_dir = os.path.join(lib_dir, "raspberry-pi", str(cpu_model))
         else:
             # Assume x86_64
             lib_dir = os.path.join(lib_dir, "linux", "x86_64")
@@ -182,6 +190,71 @@ def main():
     finally:
         _LOGGER.debug("Shutting down")
         client.loop_stop()
+
+
+# -----------------------------------------------------------------------------
+
+
+class CortexModel(str, Enum):
+    A7 = "cortex-a7"
+    A53 = "cortex-a53"
+    A72 = "cortex-a72"
+
+
+def guess_cpu_model() -> CortexModel:
+    """Tries to guess which ARM Cortex CPU this program is running on (Pi 2-4)."""
+    # Assume Pi 3 if all else fails
+    model = CortexModel.A53
+
+    try:
+        # Try lscpu
+        lscpu_lines = subprocess.check_output(["lscpu"]).splitlines()
+        for line in lscpu_lines:
+            line = line.lower()
+            if line.contains("cortex-a7"):
+                # Pi 2
+                return CortexModel.A7
+
+            if line.contains("cortex-a53"):
+                # Pi 3
+                return CortexModel.A53
+
+            if line.contains("cortex-a72"):
+                # Pi 4
+                return CortexModel.A72
+    except Exception:
+        pass
+
+    try:
+        # Try /proc/cpuinfo
+        # See: https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
+        with open("/proc/cpuinfo", "r") as cpuinfo:
+            for line in cpuinfo:
+                line = line.strip().lower()
+                if line.startswith("revision"):
+                    revision = line.split(":", maxsplit=1)[1].strip()
+                    if revision in ["a01040", "a01041", "a21041", "a22042"]:
+                        # Pi 2
+                        return CortexModel.A7
+
+                    if revision in [
+                        "a02082",
+                        "a020d3",
+                        "a22082",
+                        "a32082",
+                        "a52082",
+                        "a22083",
+                    ]:
+                        # Pi 3
+                        return CortexModel.A53
+
+                    if revision in ["a03111", "b03111", "b03112", "c03111", "c03112"]:
+                        # Pi 4
+                        return CortexModel.A72
+    except Exception:
+        pass
+
+    return model
 
 
 # -----------------------------------------------------------------------------
