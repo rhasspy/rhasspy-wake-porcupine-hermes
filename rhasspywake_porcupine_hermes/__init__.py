@@ -19,6 +19,7 @@ from rhasspyhermes.wake import (
     Hotwords,
     HotwordToggleOff,
     HotwordToggleOn,
+    HotwordToggleReason,
 )
 
 WAV_HEADER_BYTES = 44
@@ -243,7 +244,12 @@ class WakeHermesMqtt(HermesClient):
         """Received message from MQTT broker."""
         # Check enable/disable messages
         if isinstance(message, HotwordToggleOn):
-            self.disabled_reasons.discard(message.reason)
+            if message.reason == HotwordToggleReason.UNKNOWN:
+                # Always enable on unknown
+                self.disabled_reasons.clear()
+            else:
+                self.disabled_reasons.discard(message.reason)
+
             if self.disabled_reasons:
                 _LOGGER.debug("Still disabled: %s", self.disabled_reasons)
             else:
