@@ -41,13 +41,14 @@ class Porcupine(object):
         pass
 
     def __init__(
-            self,
-            library_path,
-            model_file_path,
-            keyword_file_path=None,
-            sensitivity=None,
-            keyword_file_paths=None,
-            sensitivities=None):
+        self,
+        library_path,
+        model_file_path,
+        keyword_file_path=None,
+        sensitivity=None,
+        keyword_file_paths=None,
+        sensitivities=None,
+    ):
         """
         Constructor.
 
@@ -78,11 +79,13 @@ class Porcupine(object):
             keyword_file_paths = [keyword_file_path]
 
             if not (0 <= sensitivity <= 1):
-                raise ValueError('sensitivity should be within [0, 1]')
+                raise ValueError("sensitivity should be within [0, 1]")
             sensitivities = [sensitivity]
         elif sensitivities is not None and keyword_file_paths is not None:
             if len(keyword_file_paths) != len(sensitivities):
-                raise ValueError("different number of sensitivity and keyword file path parameters are provided.")
+                raise ValueError(
+                    "different number of sensitivity and keyword file path parameters are provided."
+                )
 
             for x in keyword_file_paths:
                 if not os.path.exists(os.path.expanduser(x)):
@@ -90,7 +93,7 @@ class Porcupine(object):
 
             for x in sensitivities:
                 if not (0 <= x <= 1):
-                    raise ValueError('sensitivity should be within [0, 1]')
+                    raise ValueError("sensitivity should be within [0, 1]")
         else:
             raise ValueError("sensitivity and/or keyword file path is missing")
 
@@ -102,32 +105,40 @@ class Porcupine(object):
             c_int,
             POINTER(c_char_p),
             POINTER(c_float),
-            POINTER(POINTER(self.CPorcupine))]
+            POINTER(POINTER(self.CPorcupine)),
+        ]
         init_func.restype = self.PicovoiceStatuses
 
         self._handle = POINTER(self.CPorcupine)()
 
         status = init_func(
-            model_file_path.encode('utf-8'),
+            model_file_path.encode("utf-8"),
             self._num_keywords,
-            (c_char_p * self._num_keywords)(*[os.path.expanduser(x).encode('utf-8') for x in keyword_file_paths]),
+            (c_char_p * self._num_keywords)(
+                *[os.path.expanduser(x).encode("utf-8") for x in keyword_file_paths]
+            ),
             (c_float * self._num_keywords)(*sensitivities),
-            byref(self._handle))
+            byref(self._handle),
+        )
         if status is not self.PicovoiceStatuses.SUCCESS:
-            raise self._PICOVOICE_STATUS_TO_EXCEPTION[status]('initialization failed')
+            raise self._PICOVOICE_STATUS_TO_EXCEPTION[status]("initialization failed")
 
         self._delete_func = library.pv_porcupine_delete
         self._delete_func.argtypes = [POINTER(self.CPorcupine)]
         self._delete_func.restype = None
 
         self.process_func = library.pv_porcupine_process
-        self.process_func.argtypes = [POINTER(self.CPorcupine), POINTER(c_short), POINTER(c_int)]
+        self.process_func.argtypes = [
+            POINTER(self.CPorcupine),
+            POINTER(c_short),
+            POINTER(c_int),
+        ]
         self.process_func.restype = self.PicovoiceStatuses
 
         version_func = library.pv_porcupine_version
         version_func.argtypes = []
         version_func.restype = c_char_p
-        self._version = version_func().decode('utf-8')
+        self._version = version_func().decode("utf-8")
 
         self._frame_length = library.pv_porcupine_frame_length()
 
@@ -151,7 +162,9 @@ class Porcupine(object):
         """
 
         result = c_int()
-        status = self.process_func(self._handle, (c_short * len(pcm))(*pcm), byref(result))
+        status = self.process_func(
+            self._handle, (c_short * len(pcm))(*pcm), byref(result)
+        )
         if status is not self.PicovoiceStatuses.SUCCESS:
             raise self._PICOVOICE_STATUS_TO_EXCEPTION[status]()
 
