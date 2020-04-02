@@ -110,7 +110,7 @@ def main():
             # Pi 4 uses Cortex A72
             cpu_model = guess_cpu_model()
             _LOGGER.debug("Guessing you have an ARM %s", cpu_model)
-            lib_dir = os.path.join(lib_dir, "raspberry-pi", str(cpu_model))
+            lib_dir = os.path.join(lib_dir, "raspberry-pi", str(cpu_model.value))
         else:
             # Assume x86_64
             lib_dir = os.path.join(lib_dir, "linux", "x86_64")
