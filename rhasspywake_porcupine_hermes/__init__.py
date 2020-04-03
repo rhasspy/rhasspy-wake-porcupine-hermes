@@ -228,7 +228,9 @@ class WakeHermesMqtt(HermesClient):
                 wav_bytes, _ = udp_socket.recvfrom(
                     self.udp_chunk_size + WAV_HEADER_BYTES
                 )
-                self.wav_queue.put((wav_bytes, self.udp_siteId))
+
+                if self.enabled:
+                    self.wav_queue.put((wav_bytes, self.udp_siteId))
         except Exception:
             _LOGGER.exception("udp_thread_proc")
 
