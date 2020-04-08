@@ -1,3 +1,4 @@
+# pylint: skip-file
 #
 # Copyright 2018 Picovoice Inc.
 #

@@ -42,7 +42,7 @@ def main():
     parser.add_argument("--library", help="Path to Porcupine shared library (.so)")
     parser.add_argument("--model", help="Path to Porcupine model (.pv)")
     parser.add_argument(
-        "--wakewordId",
+        "--wakeword-id",
         action="append",
         help="Wakeword IDs of each keyword (default: use file name)",
     )
@@ -142,7 +142,7 @@ def main():
     keyword_names = [
         kn[1]
         for kn in itertools.zip_longest(
-            args.keyword, args.wakewordId or [], fillvalue=""
+            args.keyword, args.wakeword_id or [], fillvalue=""
         )
     ]
 
@@ -175,7 +175,7 @@ def main():
         sensitivities,
         keyword_dirs=args.keyword_dir,
         udp_audio_port=args.udp_audio_port,
-        siteIds=args.siteId,
+        site_ids=args.site_id,
     )
 
     _LOGGER.debug("Connecting to %s:%s", args.host, args.port)
@@ -196,6 +196,8 @@ def main():
 
 
 class CortexModel(str, Enum):
+    """Possible ARM Cortex CPU models."""
+
     A7 = "cortex-a7"
     A53 = "cortex-a53"
     A72 = "cortex-a72"
@@ -209,17 +211,17 @@ def guess_cpu_model() -> CortexModel:
     try:
         # Try lscpu
         lscpu_lines = subprocess.check_output(["lscpu"]).splitlines()
-        for line in lscpu_lines:
-            line = line.lower()
-            if line.contains("cortex-a7"):
+        for line_bytes in lscpu_lines:
+            line = line_bytes.decode().lower()
+            if "cortex-a7" in line:
                 # Pi 2
                 return CortexModel.A7
 
-            if line.contains("cortex-a53"):
+            if "cortex-a53" in line:
                 # Pi 3
                 return CortexModel.A53
 
-            if line.contains("cortex-a72"):
+            if "cortex-a72" in line:
                 # Pi 4
                 return CortexModel.A72
     except Exception:

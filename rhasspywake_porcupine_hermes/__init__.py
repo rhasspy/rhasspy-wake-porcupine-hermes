@@ -39,7 +39,7 @@ class WakeHermesMqtt(HermesClient):
         wakeword_ids: typing.List[str],
         sensitivities: typing.List[float],
         keyword_dirs: typing.Optional[typing.List[Path]] = None,
-        siteIds: typing.Optional[typing.List[str]] = None,
+        site_ids: typing.Optional[typing.List[str]] = None,
         enabled: bool = True,
         sample_rate: int = 16000,
         sample_width: int = 2,
@@ -53,7 +53,7 @@ class WakeHermesMqtt(HermesClient):
             sample_rate=sample_rate,
             sample_width=sample_width,
             channels=channels,
-            siteIds=siteIds,
+            site_ids=site_ids,
         )
 
         self.subscribe(AudioFrame, HotwordToggleOn, HotwordToggleOff, GetHotwords)
@@ -72,15 +72,15 @@ class WakeHermesMqtt(HermesClient):
         self.sample_width = sample_width
         self.channels = channels
 
-        # Queue of WAV audio chunks to process (plus siteId)
+        # Queue of WAV audio chunks to process (plus site_id)
         self.wav_queue: queue.Queue = queue.Queue()
 
         # Listen for raw audio on UDP too
         self.udp_audio_port = udp_audio_port
         self.udp_chunk_size = udp_chunk_size
 
-        # siteId used for detections from UDP
-        self.udp_siteId = self.siteId
+        # site_id used for detections from UDP
+        self.udp_site_id = self.site_id
 
         self.chunk_size = self.porcupine.frame_length * 2
         self.chunk_format = "h" * self.porcupine.frame_length
@@ -96,12 +96,12 @@ class WakeHermesMqtt(HermesClient):
 
     # -------------------------------------------------------------------------
 
-    async def handle_audio_frame(self, wav_bytes: bytes, siteId: str = "default"):
+    async def handle_audio_frame(self, wav_bytes: bytes, site_id: str = "default"):
         """Process a single audio frame"""
-        self.wav_queue.put((wav_bytes, siteId))
+        self.wav_queue.put((wav_bytes, site_id))
 
     async def handle_detection(
-        self, keyword_index: int, wakewordId: str, siteId="default"
+        self, keyword_index: int, wakeword_id: str, site_id="default"
     ) -> typing.AsyncIterable[
         typing.Union[typing.Tuple[HotwordDetected, TopicArgs], HotwordError]
     ]:
@@ -113,17 +113,19 @@ class WakeHermesMqtt(HermesClient):
 
             yield (
                 HotwordDetected(
-                    siteId=siteId,
-                    modelId=self.model_ids[keyword_index],
-                    currentSensitivity=self.sensitivities[keyword_index],
-                    modelVersion="",
-                    modelType="personal",
+                    site_id=site_id,
+                    model_id=self.model_ids[keyword_index],
+                    current_sensitivity=self.sensitivities[keyword_index],
+                    model_version="",
+                    model_type="personal",
                 ),
-                {"wakewordId": wakewordId},
+                {"wakeword_id": wakeword_id},
             )
         except Exception as e:
             _LOGGER.exception("handle_detection")
-            yield HotwordError(error=str(e), context=str(keyword_index), siteId=siteId)
+            yield HotwordError(
+                error=str(e), context=str(keyword_index), site_id=site_id
+            )
 
     async def handle_get_hotwords(
         self, get_hotwords: GetHotwords
@@ -154,25 +156,25 @@ class WakeHermesMqtt(HermesClient):
                     # smart_mirror_linux.ppn -> "smart mirror"
                     model_words = " ".join(words[:-1])
 
-                models.append(Hotword(modelId=ppn_file.name, modelWords=model_words))
+                models.append(Hotword(model_id=ppn_file.name, modelWords=model_words))
 
             yield Hotwords(
-                models={m.modelId: m for m in models},
+                models={m.model_id: m for m in models},
                 id=get_hotwords.id,
-                siteId=get_hotwords.siteId,
+                site_id=get_hotwords.site_id,
             )
 
         except Exception as e:
             _LOGGER.exception("handle_get_hotwords")
             yield HotwordError(
-                error=str(e), context=str(get_hotwords), siteId=get_hotwords.siteId
+                error=str(e), context=str(get_hotwords), site_id=get_hotwords.site_id
             )
 
     def detection_thread_proc(self):
         """Handle WAV audio chunks."""
         try:
             while True:
-                wav_bytes, siteId = self.wav_queue.get()
+                wav_bytes, site_id = self.wav_queue.get()
                 if self.first_audio:
                     _LOGGER.debug("Receiving audio")
                     self.first_audio = False
@@ -196,18 +198,18 @@ class WakeHermesMqtt(HermesClient):
                             keyword_index = 0
 
                         if keyword_index < len(self.wakeword_ids):
-                            wakewordId = self.wakeword_ids[keyword_index]
+                            wakeword_id = self.wakeword_ids[keyword_index]
                         else:
-                            wakewordId = ""
+                            wakeword_id = ""
 
-                        if not wakewordId:
+                        if not wakeword_id:
                             # Use file name
-                            wakewordId = Path(self.model_ids[keyword_index]).stem
+                            wakeword_id = Path(self.model_ids[keyword_index]).stem
 
                         asyncio.run_coroutine_threadsafe(
                             self.publish_all(
                                 self.handle_detection(
-                                    keyword_index, wakewordId, siteId=siteId
+                                    keyword_index, wakeword_id, site_id=site_id
                                 )
                             ),
                             self.loop,
@@ -230,7 +232,7 @@ class WakeHermesMqtt(HermesClient):
                 )
 
                 if self.enabled:
-                    self.wav_queue.put((wav_bytes, self.udp_siteId))
+                    self.wav_queue.put((wav_bytes, self.udp_site_id))
         except Exception:
             _LOGGER.exception("udp_thread_proc")
 
@@ -239,8 +241,8 @@ class WakeHermesMqtt(HermesClient):
     async def on_message(
         self,
         message: Message,
-        siteId: typing.Optional[str] = None,
-        sessionId: typing.Optional[str] = None,
+        site_id: typing.Optional[str] = None,
+        session_id: typing.Optional[str] = None,
         topic: typing.Optional[str] = None,
     ) -> GeneratorType:
         """Received message from MQTT broker."""
@@ -264,8 +266,8 @@ class WakeHermesMqtt(HermesClient):
             _LOGGER.debug("Disabled")
         elif isinstance(message, AudioFrame):
             if self.enabled:
-                assert siteId, "Missing siteId"
-                await self.handle_audio_frame(message.wav_bytes, siteId=siteId)
+                assert site_id, "Missing site_id"
+                await self.handle_audio_frame(message.wav_bytes, site_id=site_id)
         elif isinstance(message, GetHotwords):
             async for hotword_result in self.handle_get_hotwords(message):
                 yield hotword_result
