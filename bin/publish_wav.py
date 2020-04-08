@@ -14,7 +14,7 @@ import paho.mqtt.client as mqtt
 
 _LOGGER = logging.getLogger(__name__)
 
-TOPIC_DETECTED = "hermes/hotword/{wakewordId}/detected"
+TOPIC_DETECTED = "hermes/hotword/{wakeword_id}/detected"
 
 # -----------------------------------------------------------------------------
 
@@ -23,11 +23,11 @@ def main():
     """Main method"""
     parser = argparse.ArgumentParser(prog="publish_wav")
     parser.add_argument(
-        "--siteId", default="default", help="Site ID to publish audio to"
+        "--site-id", default="default", help="Site ID to publish audio to"
     )
-    parser.add_argument("--sessionId", default="", help="Session ID for ASR")
+    parser.add_argument("--session-id", default="", help="Session ID for ASR")
     parser.add_argument(
-        "--wakewordId", default="default", help="ID of wakeword to wait for"
+        "--wakeword-id", default="default", help="ID of wakeword to wait for"
     )
     parser.add_argument("--chunk-size", default=2048, help="Bytes per WAV chunk")
     parser.add_argument(
@@ -49,7 +49,7 @@ def main():
     _LOGGER.debug(args)
 
     subscribed_event = threading.Event()
-    detected_topic = TOPIC_DETECTED.format(wakewordId=args.wakewordId)
+    detected_topic = TOPIC_DETECTED.format(wakeword_id=args.wakeword_id)
 
     def on_connect(client, userdata, flags, rc):
         try:
@@ -110,7 +110,7 @@ def main():
 
                             # Publish audio frame
                             client.publish(
-                                f"hermes/audioServer/{args.siteId}/audioFrame",
+                                f"hermes/audioServer/{args.site_id}/audioFrame",
                                 out_io.getvalue(),
                             )
                 except Exception:
