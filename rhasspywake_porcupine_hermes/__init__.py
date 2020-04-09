@@ -156,12 +156,10 @@ class WakeHermesMqtt(HermesClient):
                     # smart_mirror_linux.ppn -> "smart mirror"
                     model_words = " ".join(words[:-1])
 
-                models.append(Hotword(model_id=ppn_file.name, modelWords=model_words))
+                models.append(Hotword(model_id=ppn_file.name, model_words=model_words))
 
             yield Hotwords(
-                models={m.model_id: m for m in models},
-                id=get_hotwords.id,
-                site_id=get_hotwords.site_id,
+                models=models, id=get_hotwords.id, site_id=get_hotwords.site_id
             )
 
         except Exception as e:
