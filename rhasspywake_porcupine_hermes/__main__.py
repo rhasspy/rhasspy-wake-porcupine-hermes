@@ -55,7 +55,10 @@ def main():
         "--stdin-audio", action="store_true", help="Read WAV audio from stdin"
     )
     parser.add_argument(
-        "--udp-audio-port", type=int, help="Also listen for WAV audio on UDP"
+        "--udp-audio",
+        nargs=3,
+        action="append",
+        help="Host/port/siteId for UDP audio input",
     )
 
     hermes_cli.add_hermes_args(parser)
@@ -165,6 +168,12 @@ def main():
 
         return
 
+    udp_audio = []
+    if args.udp_audio:
+        udp_audio = [
+            (host, int(port), site_id) for host, port, site_id in args.udp_audio
+        ]
+
     # Listen for messages
     client = mqtt.Client()
     hermes = WakeHermesMqtt(
@@ -174,7 +183,7 @@ def main():
         keyword_names,
         sensitivities,
         keyword_dirs=args.keyword_dir,
-        udp_audio_port=args.udp_audio_port,
+        udp_audio=udp_audio,
         site_ids=args.site_id,
     )
 
