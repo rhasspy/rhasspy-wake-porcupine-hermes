@@ -31,7 +31,7 @@ architecture="$(bash "${src_dir}/architecture.sh")"
 # Do Docker builds
 service_name="$(basename "${src_dir}")"
 docker_archs=('amd64' 'arm32v7' 'arm64v8' 'arm32v6')
-if [[ ! -z "$1" ]]; then
+if [[ -n "$1" ]]; then
     docker_archs=("$@")
 fi
 declare -A friendly_archs
