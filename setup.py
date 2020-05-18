@@ -1,17 +1,21 @@
 """Setup file for rhasspywake_porcupine_hermes"""
-import os
+from pathlib import Path
 
 import setuptools
 
-this_dir = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(this_dir, "README.md"), "r") as readme_file:
+this_dir = Path(__file__).parent
+with open(this_dir / "README.md") as readme_file:
     long_description = readme_file.read()
 
-with open(os.path.join(this_dir, "requirements.txt"), "r") as requirements_file:
+with open(this_dir / "requirements.txt") as requirements_file:
     requirements = requirements_file.read().splitlines()
 
-with open(os.path.join(this_dir, "VERSION"), "r") as version_file:
+with open(this_dir / "VERSION") as version_file:
     version = version_file.read().strip()
+
+module_dir = this_dir / "rhasspywake_porcupine_hermes"
+porcupine_dir = module_dir / "porcupine"
+porcupine_files = [f.relative_to(module_dir) for f in porcupine_dir.rglob("*")]
 
 setuptools.setup(
     name="rhasspy-wake-porcupine-hermes",
@@ -20,6 +24,7 @@ setuptools.setup(
     author_email="hansen.mike@gmail.com",
     url="https://github.com/rhasspy/rhasspy-wake-porcupine-hermes",
     packages=setuptools.find_packages(),
+    package_data={"rhasspywake_porcupine_hermes": porcupine_files + ["py.typed"]},
     install_requires=requirements,
     entry_points={
         "console_scripts": [
