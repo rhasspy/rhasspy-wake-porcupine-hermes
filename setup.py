@@ -15,7 +15,7 @@ with open(this_dir / "VERSION") as version_file:
 
 module_dir = this_dir / "rhasspywake_porcupine_hermes"
 porcupine_dir = module_dir / "porcupine"
-porcupine_files = [f.relative_to(module_dir) for f in porcupine_dir.rglob("*")]
+porcupine_files = [str(f.relative_to(module_dir)) for f in porcupine_dir.rglob("*")]
 
 setuptools.setup(
     name="rhasspy-wake-porcupine-hermes",
