@@ -83,7 +83,7 @@ def main():
     # Add embedded keywords too
     keyword_base = _DIR / "porcupine" / "resources" / "keyword_files"
 
-    if machine in ["armv6l", "armv7l", "armv8"]:
+    if machine in ["armv6l", "armv7l", "armv8", "aarch64"]:
         # Raspberry Pi
         args.keyword_dir.append(keyword_base / "raspberrypi")
     else:
@@ -107,7 +107,7 @@ def main():
         if machine == "armv6l":
             # Pi 0/1
             lib_dir = os.path.join(lib_dir, "raspberry-pi", "arm11")
-        elif machine in ["armv7l", "armv8"]:
+        elif machine in ["armv7l", "armv8", "aarch64"]:
             # Pi 2 uses Cortex A7
             # Pi 3 uses Cortex A53
             # Pi 4 uses Cortex A72
