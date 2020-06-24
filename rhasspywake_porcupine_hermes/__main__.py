@@ -26,7 +26,7 @@ _LOGGER = logging.getLogger("rhasspywake_porcupine_hermes")
 
 def main():
     """Main method."""
-    parser = argparse.ArgumentParser(prog="rhasspywake_porcupine_hermes")
+    parser = argparse.ArgumentParser(prog="rhasspy-wake-porcupine-hermes")
     parser.add_argument(
         "--keyword",
         required=True,

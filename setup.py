@@ -4,13 +4,21 @@ from pathlib import Path
 import setuptools
 
 this_dir = Path(__file__).parent
-with open(this_dir / "README.md") as readme_file:
-    long_description = readme_file.read()
 
-with open(this_dir / "requirements.txt") as requirements_file:
+# -----------------------------------------------------------------------------
+
+# Load README in as long description
+long_description: str = ""
+readme_path = this_dir / "README.md"
+if readme_path.is_file():
+    long_description = readme_path.read_text()
+
+requirements_path = this_dir / "requirements.txt"
+with open(requirements_path, "r") as requirements_file:
     requirements = requirements_file.read().splitlines()
 
-with open(this_dir / "VERSION") as version_file:
+version_path = this_dir / "VERSION"
+with open(version_path, "r") as version_file:
     version = version_file.read().strip()
 
 module_dir = this_dir / "rhasspywake_porcupine_hermes"
@@ -21,7 +29,7 @@ setuptools.setup(
     name="rhasspy-wake-porcupine-hermes",
     version=version,
     author="Michael Hansen",
-    author_email="hansen.mike@gmail.com",
+    author_email="mike@rhasspy.org",
     url="https://github.com/rhasspy/rhasspy-wake-porcupine-hermes",
     packages=setuptools.find_packages(),
     package_data={"rhasspywake_porcupine_hermes": porcupine_files + ["py.typed"]},
