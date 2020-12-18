@@ -138,7 +138,7 @@ def main():
     porcupine_handle = Porcupine(
         args.library,
         args.model,
-        keyword_file_paths=[str(kw) for kw in args.keyword],
+        keyword_paths=[str(kw) for kw in args.keyword],
         sensitivities=sensitivities,
     )
 
