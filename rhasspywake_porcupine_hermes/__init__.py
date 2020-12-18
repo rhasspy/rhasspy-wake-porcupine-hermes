@@ -191,7 +191,7 @@ class WakeHermesMqtt(HermesClient):
                     unpacked_chunk = struct.unpack_from(self.chunk_format, chunk)
                     keyword_index = self.porcupine.process(unpacked_chunk)
 
-                    if keyword_index:
+                    if keyword_index >= 0:
                         # Detection
                         if len(self.model_ids) == 1:
                             keyword_index = 0

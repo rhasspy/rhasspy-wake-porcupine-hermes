@@ -5,7 +5,6 @@ import itertools
 import json
 import logging
 import os
-import platform
 import subprocess
 import sys
 from enum import Enum
@@ -13,10 +12,11 @@ from pathlib import Path
 
 import attr
 import paho.mqtt.client as mqtt
+import pvporcupine
+
 import rhasspyhermes.cli as hermes_cli
 
 from . import WakeHermesMqtt
-from .porcupine import Porcupine
 
 _DIR = Path(__file__).parent
 _LOGGER = logging.getLogger("rhasspywake_porcupine_hermes")
@@ -39,8 +39,6 @@ def main():
         default=[],
         help="Path to directory with keyword files",
     )
-    parser.add_argument("--library", help="Path to Porcupine shared library (.so)")
-    parser.add_argument("--model", help="Path to Porcupine model (.pv)")
     parser.add_argument(
         "--wakeword-id",
         action="append",
@@ -61,6 +59,11 @@ def main():
         help="Host/port/siteId for UDP audio input",
     )
 
+    # --- DEPRECATED (using pvporcupine now) ---
+    parser.add_argument("--library", help="Path to Porcupine shared library (.so)")
+    parser.add_argument("--model", help="Path to Porcupine model (.pv)")
+    # --- DEPRECATED (using pvporcupine now) ---
+
     hermes_cli.add_hermes_args(parser)
     args = parser.parse_args()
 
@@ -75,71 +78,52 @@ def main():
         )
     ]
 
-    machine = platform.machine()
-
     if args.keyword_dir:
         args.keyword_dir = [Path(d) for d in args.keyword_dir]
 
     # Add embedded keywords too
-    keyword_base = _DIR / "porcupine" / "resources" / "keyword_files"
+    keyword_base = Path(next(iter(pvporcupine.pv_keyword_paths("").values()))).parent
+    args.keyword_dir.append(keyword_base)
 
-    if machine in ["armv6l", "armv7l", "armv8"]:
-        # Raspberry Pi
-        args.keyword_dir.append(keyword_base / "raspberrypi")
-    else:
-        # Desktop/server
-        args.keyword_dir.append(keyword_base / "linux")
+    _LOGGER.debug("Keyword dirs: %s", args.keyword_dir)
 
     # Resolve all keyword files against keyword dirs
     for i, keyword in enumerate(args.keyword):
+        resolved = False
         maybe_keyword = Path(keyword)
-        if not maybe_keyword.is_file():
+        if maybe_keyword.is_file():
+            resolved = True
+        else:
+            keyword_name = maybe_keyword.stem
+
             # Try to resolve agains keyword dirs
             for keyword_dir in args.keyword_dir:
                 maybe_keyword = keyword_dir / keyword
                 if maybe_keyword.is_file():
                     # Overwrite with resolved path
                     args.keyword[i] = str(maybe_keyword)
+                    resolved = True
+                    break
 
-    if not args.library:
-        # Use embedded library
-        lib_dir = os.path.join(_DIR, "porcupine", "lib")
-        if machine == "armv6l":
-            # Pi 0/1
-            lib_dir = os.path.join(lib_dir, "raspberry-pi", "arm11")
-        elif machine in ["armv7l", "armv8"]:
-            # Pi 2 uses Cortex A7
-            # Pi 3 uses Cortex A53
-            # Pi 4 uses Cortex A72
-            cpu_model = guess_cpu_model()
-            _LOGGER.debug("Guessing you have an ARM %s", cpu_model)
-            lib_dir = os.path.join(lib_dir, "raspberry-pi", str(cpu_model.value))
-        else:
-            # Assume x86_64
-            lib_dir = os.path.join(lib_dir, "linux", "x86_64")
+                # porcupine.ppn => porcupine_linux.ppn
+                for real_keyword in keyword_dir.glob(f"{keyword_name}_*"):
+                    # Overwrite with resolved path
+                    args.keyword[i] = str(real_keyword)
+                    resolved = True
+                    break
 
-        args.library = os.path.join(lib_dir, "libpv_porcupine.so")
-
-    if not args.model:
-        # Use embedded model
-        args.model = os.path.join(
-            _DIR, "porcupine", "lib", "common", "porcupine_params.pv"
-        )
+        if not resolved:
+            _LOGGER.warning("Failed to resolve keyword: %s", keyword)
 
     _LOGGER.debug(
-        "Loading porcupine (kw=%s, kwdirs=%s, sensitivity=%s, library=%s, model=%s)",
+        "Loading porcupine (kw=%s, kwdirs=%s, sensitivity=%s)",
         args.keyword,
         [str(d) for d in args.keyword_dir],
         sensitivities,
-        args.library,
-        args.model,
     )
 
-    porcupine_handle = Porcupine(
-        args.library,
-        args.model,
-        keyword_paths=[str(kw) for kw in args.keyword],
-        sensitivities=sensitivities,
+    porcupine_handle = pvporcupine.create(
+        keyword_paths=[str(kw) for kw in args.keyword], sensitivities=sensitivities
     )
 
     keyword_names = [
