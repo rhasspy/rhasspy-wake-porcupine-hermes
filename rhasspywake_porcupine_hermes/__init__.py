@@ -46,6 +46,7 @@ class WakeHermesMqtt(HermesClient):
         channels: int = 1,
         udp_audio: typing.Optional[typing.List[typing.Tuple[str, int, str]]] = None,
         udp_chunk_size: int = 2048,
+        lang: typing.Optional[str] = None,
     ):
         super().__init__(
             "rhasspywake_porcupine_hermes",
@@ -80,6 +81,7 @@ class WakeHermesMqtt(HermesClient):
 
         self.audio_buffer = bytes()
         self.first_audio = True
+        self.lang = lang
 
         # Start threads
         threading.Thread(target=self.detection_thread_proc, daemon=True).start()
@@ -119,6 +121,7 @@ class WakeHermesMqtt(HermesClient):
                     current_sensitivity=self.sensitivities[keyword_index],
                     model_version="",
                     model_type="personal",
+                    lang=self.lang,
                 ),
                 {"wakeword_id": wakeword_id},
             )

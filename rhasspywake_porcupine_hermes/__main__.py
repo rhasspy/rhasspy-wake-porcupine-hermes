@@ -58,6 +58,7 @@ def main():
         action="append",
         help="Host/port/siteId for UDP audio input",
     )
+    parser.add_argument("--lang", help="Set lang in hotword detected message")
 
     # --- DEPRECATED (using pvporcupine now) ---
     parser.add_argument("--library", help="Path to Porcupine shared library (.so)")
@@ -169,6 +170,7 @@ def main():
         keyword_dirs=args.keyword_dir,
         udp_audio=udp_audio,
         site_ids=args.site_id,
+        lang=args.lang,
     )
 
     _LOGGER.debug("Connecting to %s:%s", args.host, args.port)
