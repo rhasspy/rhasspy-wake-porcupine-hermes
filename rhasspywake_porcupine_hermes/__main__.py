@@ -123,10 +123,6 @@ def main():
         sensitivities,
     )
 
-    porcupine_handle = pvporcupine.create(
-        keyword_paths=[str(kw) for kw in args.keyword], sensitivities=sensitivities
-    )
-
     keyword_names = [
         kn[1]
         for kn in itertools.zip_longest(
@@ -138,7 +134,7 @@ def main():
         # Read WAV from stdin, detect, and exit
         client = None
         hermes = WakeHermesMqtt(
-            client, porcupine_handle, args.keyword, keyword_names, sensitivities
+            client, args.keyword, keyword_names, sensitivities
         )
 
         if os.isatty(sys.stdin.fileno()):
@@ -163,7 +159,6 @@ def main():
     client = mqtt.Client()
     hermes = WakeHermesMqtt(
         client,
-        porcupine_handle,
         args.keyword,
         keyword_names,
         sensitivities,
