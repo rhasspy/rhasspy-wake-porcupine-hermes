@@ -73,7 +73,7 @@ class WakeHermesMqtt(HermesClient):
         self.channels = channels
 
         self.audio_buffers = dict()
-        self.first = dict()
+        self.first_audio = dict()
         self.chunks = dict()
         self.unpacked_chunks = dict()
         self.wav_queues = dict()
@@ -82,7 +82,7 @@ class WakeHermesMqtt(HermesClient):
         self.chunk_formats = dict()
         for site_id in self.site_ids:
           self.audio_buffers[site_id] = bytes()
-          self.first[site_id] = True
+          self.first_audio[site_id] = True
           self.wav_queues[site_id] = queue.Queue()
           self.porcupines[site_id] = pvporcupine.create(keyword_paths=[str(kw) for kw in self.model_ids], sensitivities=self.sensitivities)
           self.chunk_sizes[site_id] = self.porcupines[site_id].frame_length * 2
@@ -185,9 +185,9 @@ class WakeHermesMqtt(HermesClient):
         try:
             while True:
                 wav_bytes, site_id = self.wav_queues[site_id].get()
-                if self.first[site_id]:
+                if self.first_audio[site_id]:
                     _LOGGER.debug("Receiving audio %s", site_id)
-                    self.first[site_id] = False
+                    self.first_audio[site_id] = False
 
                 # Add to persistent buffer
                 audio_data = self.maybe_convert_wav(wav_bytes)
@@ -268,7 +268,7 @@ class WakeHermesMqtt(HermesClient):
                 _LOGGER.debug("Still disabled: %s", self.disabled_reasons)
             else:
                 self.enabled = True
-                self.first_audio = True
+                self.first_audio[site_id]= True
                 _LOGGER.debug("Enabled")
         elif isinstance(message, HotwordToggleOff):
             self.enabled = False
