@@ -5,9 +5,7 @@ import itertools
 import json
 import logging
 import os
-import subprocess
 import sys
-from enum import Enum
 from pathlib import Path
 
 import attr
@@ -57,6 +55,16 @@ def main():
         nargs=3,
         action="append",
         help="Host/port/siteId for UDP audio input",
+    )
+    parser.add_argument(
+        "--udp-raw-audio",
+        action="append",
+        help="Site id(s) where UDP audio is raw 16Khz 16-bit mono PCM instead of WAV chunks",
+    )
+    parser.add_argument(
+        "--udp-forward-mqtt",
+        action="append",
+        help="Site id(s) to forward audio to MQTT after detection",
     )
     parser.add_argument("--lang", help="Set lang in hotword detected message")
 
@@ -133,9 +141,7 @@ def main():
     if args.stdin_audio:
         # Read WAV from stdin, detect, and exit
         client = None
-        hermes = WakeHermesMqtt(
-            client, args.keyword, keyword_names, sensitivities
-        )
+        hermes = WakeHermesMqtt(client, args.keyword, keyword_names, sensitivities)
 
         if os.isatty(sys.stdin.fileno()):
             print("Reading WAV data from stdin...", file=sys.stderr)
@@ -164,6 +170,8 @@ def main():
         sensitivities,
         keyword_dirs=args.keyword_dir,
         udp_audio=udp_audio,
+        udp_raw_audio=args.udp_raw_audio,
+        udp_forward_mqtt=args.udp_forward_mqtt,
         site_ids=args.site_id,
         lang=args.lang,
     )
@@ -179,74 +187,8 @@ def main():
         pass
     finally:
         _LOGGER.debug("Shutting down")
+        hermes.stop()
         client.loop_stop()
-
-
-# -----------------------------------------------------------------------------
-
-
-class CortexModel(str, Enum):
-    """Possible ARM Cortex CPU models."""
-
-    A7 = "cortex-a7"
-    A53 = "cortex-a53"
-    A72 = "cortex-a72"
-
-
-def guess_cpu_model() -> CortexModel:
-    """Tries to guess which ARM Cortex CPU this program is running on (Pi 2-4)."""
-    # Assume Pi 3 if all else fails
-    model = CortexModel.A53
-
-    try:
-        # Try lscpu
-        lscpu_lines = subprocess.check_output(["lscpu"]).splitlines()
-        for line_bytes in lscpu_lines:
-            line = line_bytes.decode().lower()
-            if "cortex-a7" in line:
-                # Pi 2
-                return CortexModel.A7
-
-            if "cortex-a53" in line:
-                # Pi 3
-                return CortexModel.A53
-
-            if "cortex-a72" in line:
-                # Pi 4
-                return CortexModel.A72
-    except Exception:
-        pass
-
-    try:
-        # Try /proc/cpuinfo
-        # See: https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
-        with open("/proc/cpuinfo", "r") as cpuinfo:
-            for line in cpuinfo:
-                line = line.strip().lower()
-                if line.startswith("revision"):
-                    revision = line.split(":", maxsplit=1)[1].strip()
-                    if revision in ["a01040", "a01041", "a21041", "a22042"]:
-                        # Pi 2
-                        return CortexModel.A7
-
-                    if revision in [
-                        "a02082",
-                        "a020d3",
-                        "a22082",
-                        "a32082",
-                        "a52082",
-                        "a22083",
-                    ]:
-                        # Pi 3
-                        return CortexModel.A53
-
-                    if revision in ["a03111", "b03111", "b03112", "c03111", "c03112"]:
-                        # Pi 4
-                        return CortexModel.A72
-    except Exception:
-        pass
-
-    return model
 
 
 # -----------------------------------------------------------------------------
