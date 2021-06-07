@@ -39,6 +39,8 @@ class SiteInfo:
     """Self-contained information for a single site"""
 
     site_id: str
+    enabled: bool = True
+    disabled_reasons: typing.Set[str] = field(default_factory=set)
     detection_thread: typing.Optional[threading.Thread] = None
     audio_buffer: bytes = bytes()
     first_audio: bool = True
@@ -76,7 +78,6 @@ class WakeHermesMqtt(HermesClient):
         sensitivities: typing.List[float],
         keyword_dirs: typing.Optional[typing.List[Path]] = None,
         site_ids: typing.Optional[typing.List[str]] = None,
-        enabled: bool = True,
         sample_rate: int = 16000,
         sample_width: int = 2,
         channels: int = 1,
@@ -102,8 +103,6 @@ class WakeHermesMqtt(HermesClient):
         self.sensitivities = sensitivities
 
         self.keyword_dirs = keyword_dirs or []
-        self.enabled = enabled
-        self.disabled_reasons: typing.Set[str] = set()
 
         # Required audio format
         self.sample_rate = sample_rate
@@ -343,7 +342,7 @@ class WakeHermesMqtt(HermesClient):
             while True:
                 wav_bytes, _ = udp_socket.recvfrom(chunk_size)
 
-                if self.enabled:
+                if site_info.enabled:
                     site_info.wav_queue.put((wav_bytes, is_raw_audio))
                 elif forward_to_mqtt:
                     # When the wake word service is disabled, ASR should be active
@@ -380,31 +379,33 @@ class WakeHermesMqtt(HermesClient):
     ) -> GeneratorType:
         """Received message from MQTT broker."""
         # Check enable/disable messages
+        site_info = self.site_info.get(site_id) if site_id else None
+
         if isinstance(message, HotwordToggleOn):
-            if message.reason == HotwordToggleReason.UNKNOWN:
-                # Always enable on unknown
-                self.disabled_reasons.clear()
-            else:
-                self.disabled_reasons.discard(message.reason)
+            if site_info:
+                if message.reason == HotwordToggleReason.UNKNOWN:
+                    # Always enable on unknown
+                    site_info.disabled_reasons.clear()
+                else:
+                    site_info.disabled_reasons.discard(message.reason)
 
-            if self.disabled_reasons:
-                _LOGGER.debug("Still disabled: %s", self.disabled_reasons)
-            else:
-                self.enabled = True
-
-                # Reset first audio flags
-                for site_info in self.site_info.values():
+                if site_info.disabled_reasons:
+                    _LOGGER.debug("Still disabled: %s", site_info.disabled_reasons)
+                else:
+                    site_info.enabled = True
                     site_info.first_audio = True
 
-                _LOGGER.debug("Enabled")
+                    _LOGGER.debug("Enabled")
         elif isinstance(message, HotwordToggleOff):
-            self.enabled = False
-            self.disabled_reasons.add(message.reason)
-            _LOGGER.debug("Disabled")
+            if site_info:
+                site_info.enabled = False
+                site_info.disabled_reasons.add(message.reason)
+                _LOGGER.debug("Disabled")
         elif isinstance(message, AudioFrame):
-            if self.enabled:
-                assert site_id, "Missing site_id"
-                await self.handle_audio_frame(message.wav_bytes, site_id=site_id)
+            if site_info and site_info.enabled:
+                await self.handle_audio_frame(
+                    message.wav_bytes, site_id=site_info.site_id
+                )
         elif isinstance(message, GetHotwords):
             async for hotword_result in self.handle_get_hotwords(message):
                 yield hotword_result
