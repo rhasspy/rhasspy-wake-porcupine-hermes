@@ -11,7 +11,6 @@ from pathlib import Path
 import attr
 import paho.mqtt.client as mqtt
 import pvporcupine
-
 import rhasspyhermes.cli as hermes_cli
 
 from . import WakeHermesMqtt

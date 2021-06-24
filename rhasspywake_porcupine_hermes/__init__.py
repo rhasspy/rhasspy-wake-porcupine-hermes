@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pvporcupine
-
 from rhasspyhermes.audioserver import AudioFrame
 from rhasspyhermes.base import Message
 from rhasspyhermes.client import GeneratorType, HermesClient, TopicArgs
