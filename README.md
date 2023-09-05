@@ -30,8 +30,10 @@ $ bin/rhasspy-wake-porcupine-hermes <ARGS>
 
 ```
 usage: rhasspy-wake-porcupine-hermes [-h] --keyword KEYWORD
+                                     [--access-key ACCESS_KEY]
                                      [--keyword-dir KEYWORD_DIR]
-                                     [--library LIBRARY] [--model MODEL]
+                                     [--library LIBRARY]
+                                     [--model MODEL]
                                      [--wakeword-id WAKEWORD_ID]
                                      [--sensitivity SENSITIVITY]
                                      [--stdin-audio]
@@ -50,12 +52,15 @@ usage: rhasspy-wake-porcupine-hermes [-h] --keyword KEYWORD
 
 optional arguments:
   -h, --help            show this help message and exit
+  --access-key ACCESS_KEY
+                        Porcupine access key
   --keyword KEYWORD     Path(s) to one or more Porcupine keyword file(s)
                         (.ppn)
   --keyword-dir KEYWORD_DIR
                         Path to directory with keyword files
   --library LIBRARY     Path to Porcupine shared library (.so)
-  --model MODEL         Path to Porcupine model (.pv)
+  --model MODEL         Absolute path to the file containing model parameters (.pv)
+                        Default: using the library provided by `pvporcupine`
   --wakeword-id WAKEWORD_ID
                         Wakeword IDs of each keyword (default: use file name)
   --sensitivity SENSITIVITY
