@@ -43,7 +43,7 @@ class SiteInfo:
     detection_thread: typing.Optional[threading.Thread] = None
     audio_buffer: bytes = bytes()
     first_audio: bool = True
-    porcupine: typing.Optional[pvporcupine.porcupine.Porcupine] = None
+    porcupine: typing.Optional[pvporcupine.Porcupine] = None
 
     # Queue of (bytes, is_raw)
     wav_queue: "queue.Queue[typing.Tuple[bytes, bool]]" = field(
@@ -72,11 +72,13 @@ class WakeHermesMqtt(HermesClient):
     def __init__(
         self,
         client,
+        access_key: str,
         model_ids: typing.List[str],
         wakeword_ids: typing.List[str],
         sensitivities: typing.List[float],
         keyword_dirs: typing.Optional[typing.List[Path]] = None,
         site_ids: typing.Optional[typing.List[str]] = None,
+        model_path: typing.Optional[str] = None,
         sample_rate: int = 16000,
         sample_width: int = 2,
         channels: int = 1,
@@ -97,8 +99,10 @@ class WakeHermesMqtt(HermesClient):
 
         self.subscribe(AudioFrame, HotwordToggleOn, HotwordToggleOff, GetHotwords)
 
+        self.access_key = access_key
         self.wakeword_ids = wakeword_ids
         self.model_ids = model_ids
+        self.model_path = model_path
         self.sensitivities = sensitivities
 
         self.keyword_dirs = keyword_dirs or []
@@ -250,7 +254,9 @@ class WakeHermesMqtt(HermesClient):
             if site_info.porcupine is None:
                 _LOGGER.debug("Loading porcupine for %s", site_info.site_id)
                 site_info.porcupine = pvporcupine.create(
+                    access_key=self.access_key,
                     keyword_paths=[str(kw) for kw in self.model_ids],
+                    model_path=self.model_path,
                     sensitivities=self.sensitivities,
                 )
 
